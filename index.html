@@ -76,7 +76,7 @@
           { description: "レベル3のアイテムを2つ作ろう", goal: { level: 3, count: 2 } },
           { description: "レベル4のアイテムを1つ作ろう", goal: { level: 4, count: 1 } },
           { description: "レベル5のアイテムを1つ作ろう", goal: { level: 5, count: 1 } },
-          // 他のクエストを追加...
+          { description: "神秘の宝石を手に入れよう", goal: { name: '神秘の宝石', count: 1 } },
         ];
         this.currentQuest = 0;
         this.story = [
@@ -88,6 +88,7 @@
           "鉄と金を手に入れ、最強のアイテムを作り上げよう。",
           "ダイヤモンドを手に入れれば、世界を救うことができるはずだ。",
           "しかし、それだけでは終わらない。神秘の宝石を手に入れ、真の平和を取り戻そう。",
+          "神秘の宝石は、他のアイテムからのみ生み出すことができる。",
           "勇者よ、立ち上がれ。世界の運命は君に託された！",
           // ストーリーを追加...
         ];
@@ -117,7 +118,13 @@
 
       checkQuest() {
         const quest = this.quests[this.currentQuest];
-        const count = this.items.filter(item => item.level === quest.goal.level).length;
+        let count;
+
+        if (quest.goal.name) {
+          count = this.items.filter(item => item.name === quest.goal.name).length;
+        } else {
+          count = this.items.filter(item => item.level === quest.goal.level).length;
+        }
 
         if (count >= quest.goal.count) {
           storyElement.innerHTML += `<p>クエスト「${quest.description}」をクリアしました！</p>`;
@@ -156,9 +163,9 @@
           gameBoard.appendChild(itemElement);
         });
 
-        // ランダムにアイテムを追加
+        // ランダムにアイテムを追加（神秘の宝石を除く）
         if (this.items.length < 20) {
-          const randomType = this.itemTypes[Math.floor(Math.random() * this.itemTypes.length)];
+          const randomType = this.itemTypes[Math.floor(Math.random() * (this.itemTypes.length - 1))];
           this.addItem(new Item(randomType, 1));
         }
       }
