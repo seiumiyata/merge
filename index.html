@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>マージパズルゲーム</title>
+  <style>
+    /* CSSでゲームの見た目を整える */
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+    }
+    #game-board {
+      display: flex;
+      flex-wrap: wrap;
+      width: 400px;
+      margin: 0 auto;
+    }
+    .item {
+      width: 50px;
+      height: 50px;
+      margin: 10px;
+      border: 1px solid #ccc;
+      cursor: pointer;
+    }
+    .selected {
+      background-color: #f0f0f0;
+    }
+    #story {
+      margin-top: 20px;
+      text-align: left;
+    }
+    #score {
+      margin-top: 20px;
+      font-size: 18px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h1>マージパズルゲーム</h1>
+  <div id="game-board"></div>
+  <div id="score"></div>
+  <div id="story"></div>
+
+  <script>
+    // JavaScriptでゲームロジックを実装
+    const gameBoard = document.getElementById('game-board');
+    const storyElement = document.getElementById('story');
+    const scoreElement = document.getElementById('score');
+
+    class Item {
+      constructor(name, level) {
+        this.name = name;
+        this.level = level;
+      }
+
+      merge(other) {
+        if (this.name === other.name && this.level === other.level) {
+          if (this.level === 5) {
+            const nextItemType = game.itemTypes[game.itemTypes.indexOf(this.name) + 1];
+            if (nextItemType) {
+              return new Item(nextItemType, 1);
+            }
+          }
+          return new Item(this.name, this.level + 1);
+        }
+        return null;
+      }
+    }
+
+    class MergeGame {
+      constructor() {
+        this.items = [];
+        this.itemTypes = ['木の枝', '石', '鉄', '金', 'ダイヤモンド', '神秘の宝石'];
+        this.quests = [
+          { description: "レベル2のアイテムを3つ作ろう", goal: { level: 2, count: 3 } },
+          { description: "レベル3のアイテムを2つ作ろう", goal: { level: 3, count: 2 } },
+          { description: "レベル4のアイテムを1つ作ろう", goal: { level: 4, count: 1 } },
+          { description: "レベル5のアイテムを1つ作ろう", goal: { level: 5, count: 1 } },
+          // 他のクエストを追加...
+        ];
+        this.currentQuest = 0;
+        this.story = [
+          "遥か昔、この世界は平和に満ちていた。",
+          "しかし、悪魔の力によって世界は分断され、混沌に陥ってしまった。",
+          "伝説の勇者だけが、アイテムをマージする力を使って世界を救うことができる。",
+          "勇者よ、アイテムをマージし、この世界に平和を取り戻すのだ！",
+          "木の枝と石を組み合わせ、より強力なアイテムを作り出せ。",
+          "鉄と金を手に入れ、最強のアイテムを作り上げよう。",
+          "ダイヤモンドを手に入れれば、世界を救うことができるはずだ。",
+          "しかし、それだけでは終わらない。神秘の宝石を手に入れ、真の平和を取り戻そう。",
+          "勇者よ、立ち上がれ。世界の運命は君に託された！",
+          // ストーリーを追加...
+        ];
+        this.selectedItem = null;
+        this.score = 0;
+      }
+
+      addItem(item) {
+        this.items.push(item);
+        this.renderItems();
+      }
+
+      mergeItems(item1, item2) {
+        const mergedItem = item1.merge(item2);
+
+        if (mergedItem) {
+          const index1 = this.items.indexOf(item1);
+          const index2 = this.items.indexOf(item2);
+          this.items.splice(index1, 1);
+          this.items.splice(index2, 1);
+          this.addItem(mergedItem);
+          this.score += mergedItem.level * 10;
+          this.updateScore();
+          this.checkQuest();
+        }
+      }
+
+      checkQuest() {
+        const quest = this.quests[this.currentQuest];
+        const count = this.items.filter(item => item.level === quest.goal.level).length;
+
+        if (count >= quest.goal.count) {
+          storyElement.innerHTML += `<p>クエスト「${quest.description}」をクリアしました！</p>`;
+          this.currentQuest++;
+          this.progressStory();
+        }
+      }
+
+      progressStory() {
+        if (this.currentQuest < this.story.length) {
+          storyElement.innerHTML += `<p>${this.story[this.currentQuest]}</p>`;
+        } else {
+          storyElement.innerHTML += "<p>世界に真の平和が訪れました！あなたは伝説の勇者です！</p>";
+        }
+      }
+
+      renderItems() {
+        gameBoard.innerHTML = '';
+        this.items.forEach((item, index) => {
+          const itemElement = document.createElement('div');
+          itemElement.className = 'item';
+          itemElement.innerText = `${item.name} (Lv${item.level})`;
+          itemElement.addEventListener('click', () => {
+            if (!this.selectedItem) {
+              this.selectedItem = item;
+              itemElement.classList.add('selected');
+            } else if (this.selectedItem === item) {
+              this.selectedItem = null;
+              itemElement.classList.remove('selected');
+            } else {
+              this.mergeItems(this.selectedItem, item);
+              this.selectedItem = null;
+              gameBoard.querySelectorAll('.selected').forEach(el => el.classList.remove('selected'));
+            }
+          });
+          gameBoard.appendChild(itemElement);
+        });
+
+        // ランダムにアイテムを追加
+        if (this.items.length < 20) {
+          const randomType = this.itemTypes[Math.floor(Math.random() * this.itemTypes.length)];
+          this.addItem(new Item(randomType, 1));
+        }
+      }
+
+      updateScore() {
+        scoreElement.innerText = `スコア: ${this.score}`;
+      }
+    }
+
+    const game = new MergeGame();
+    game.addItem(new Item("木の枝", 1));
+    game.addItem(new Item("木の枝", 1));
+    game.addItem(new Item("石", 1));
+    game.addItem(new Item("石", 1));
+    game.progressStory();
+  </script>
+</body>
+</html>
