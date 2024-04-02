@@ -285,10 +285,10 @@
             case 3:
               baseDamage = 10;
               break;
-            case 4:
+            case 5:
               baseDamage = 20;
               break;
-            case 5:
+            case 7:
               baseDamage = 30;
               break;
           }
@@ -318,11 +318,10 @@
       }
 
       resetSelection();
-      replenishCards(); // カードを補充する
-      turnCount++; // ターン数を増やす
+      replenishCards();
+      turnCount++;
       document.getElementById('turnCount').textContent = turnCount;
 
-      // ターン数に応じて難易度を上げる
       if (turnCount % 5 === 0) {
         const baseDamage = 20;
         const damageVariance = 5;
@@ -347,7 +346,6 @@
       let numberCardCount = missingCardCount - 4;
       let operatorCardCount = 4;
 
-      // ターン数に応じて補充するカードの種類を変更する
       if (turnCount >= 5) {
         numberCardCount = missingCardCount - 6;
         operatorCardCount = 6;
@@ -392,7 +390,9 @@
 
     // 使えるカード枚数を生成する関数
     function generateAllowedMoves() {
-      allowedMoves = Math.floor(Math.random() * 3) + 3;
+      const allowedMovesOptions = [3, 5, 7];
+      const randomIndex = Math.floor(Math.random() * allowedMovesOptions.length);
+      allowedMoves = allowedMovesOptions[randomIndex];
       allowedMovesElement.textContent = allowedMoves;
     }
 
