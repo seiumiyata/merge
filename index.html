@@ -1,186 +1,423 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>マージパズルゲーム</title>
+  <title>ホラー計算ゲーム</title>
   <style>
-    /* CSSでゲームの見た目を整える */
     body {
       font-family: Arial, sans-serif;
-      text-align: center;
-    }
-    #game-board {
+      background-color: #1c1c1c;
       display: flex;
-      flex-wrap: wrap;
-      width: 400px;
-      margin: 0 auto;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      color: #fff;
     }
-    .item {
-      width: 50px;
-      height: 50px;
-      margin: 10px;
-      border: 1px solid #ccc;
+    #game {
+      background-color: #2d2d2d;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+      text-align: center;
+      max-height: 85vh;
+      overflow-y: auto;
+    }
+    #cards {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      grid-gap: 10px;
+      margin-top: 20px;
+    }
+    .card {
+      width: 60px;
+      height: 80px;
+      background-color: #444;
+      border: 1px solid #666;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 24px;
       cursor: pointer;
+      border-radius: 5px;
+      position: relative;
+      color: #fff;
+      transition: transform 0.3s;
     }
     .selected {
-      background-color: #f0f0f0;
+      background-color: #6b5b95;
+      border-color: #9b8ec7;
+      transform: scale(1.1);
     }
-    #story {
-      margin-top: 20px;
-      text-align: left;
+    .card-order {
+      font-size: 12px;
+      position: absolute;
+      top: 2px;
+      right: 2px;
     }
-    #score {
+    .glow {
+      animation: glowEffect 1s ease-in-out;
+      box-shadow: 0 0 20px rgba(255, 255, 0, 0.8);
+      transform: scale(1.1);
+    }
+    @keyframes glowEffect {
+      0% {
+        box-shadow: 0 0 10px rgba(255, 255, 0, 0.8);
+      }
+      50% {
+        box-shadow: 0 0 40px rgba(255, 255, 0, 0.8);
+      }
+      100% {
+        box-shadow: 0 0 10px rgba(255, 255, 0, 0.8);
+      }
+    }
+    .fade-in {
+      animation: fadeInEffect 0.5s ease-in-out;
+    }
+    @keyframes fadeInEffect {
+      0% {
+        opacity: 0;
+      }
+      100% {
+        opacity: 1;
+      }
+    }
+    .shake {
+      animation: shakeEffect 0.5s ease-in-out;
+    }
+    @keyframes shakeEffect {
+      0%, 100% {
+        transform: translateX(0);
+      }
+      10%, 30%, 50%, 70%, 90% {
+        transform: translateX(-5px);
+      }
+      20%, 40%, 60%, 80% {
+        transform: translateX(5px);
+      }
+    }
+    button {
       margin-top: 20px;
-      font-size: 18px;
-      font-weight: bold;
+      padding: 10px 20px;
+      font-size: 16px;
+      background-color: #6b5b95;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+    button:hover {
+      background-color: #9b8ec7;
     }
   </style>
 </head>
 <body>
-  <h1>マージパズルゲーム</h1>
-  <div id="game-board"></div>
-  <div id="score"></div>
-  <div id="story"></div>
+  <div id="game">
+    <h1>ホラー計算ゲーム</h1>
+    <div id="enemy">
+      敵のHP: <span id="enemyHP"></span>
+    </div>
+    <div id="player">
+      プレイヤーのHP: <span id="playerHP"></span>
+    </div>
+    <div id="target">
+      目標の数字: <span id="targetNumber"></span>
+    </div>
+    <div id="moves">
+      使えるカード枚数: <span id="allowedMoves"></span>
+    </div>
+    <div id="turn">
+      ターン数: <span id="turnCount"></span>
+    </div>
+    <div id="cards"></div>
+    <div id="result"></div>
+    <button id="calculateBtn">計算する</button>
+    <button id="resetBtn">選択解除</button>
+  </div>
 
   <script>
-    // JavaScriptでゲームロジックを実装
-    const gameBoard = document.getElementById('game-board');
-    const storyElement = document.getElementById('story');
-    const scoreElement = document.getElementById('score');
+    const cards = document.getElementById('cards');
+    const enemyHP = document.getElementById('enemyHP');
+    const playerHP = document.getElementById('playerHP');
+    const targetNumber = document.getElementById('targetNumber');
+    const allowedMovesElement = document.getElementById('allowedMoves');
+    const result = document.getElementById('result');
+    const calculateBtn = document.getElementById('calculateBtn');
+    const resetBtn = document.getElementById('resetBtn');
 
-    class Item {
-      constructor(name, level) {
-        this.name = name;
-        this.level = level;
-      }
+    let selectedCards = [];
+    let cardCount = 35;
+    let enemyHealth = 100;
+    let playerHealth = 100;
+    let allowedMoves = 0;
+    let target = 0;
+    let turnCount = 1;
 
-      merge(other) {
-        if (this.name === other.name && this.level === other.level) {
-          if (this.level === 5) {
-            const nextItemType = game.itemTypes[game.itemTypes.indexOf(this.name) + 1];
-            if (nextItemType) {
-              return new Item(nextItemType, 1);
-            }
-          }
-          return new Item(this.name, this.level + 1);
+    // カードを生成する関数
+    function generateCards() {
+      const numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+      const operators = ['+', '-', '*', '/'];
+
+      for (let i = 0; i < cardCount; i++) {
+        const card = document.createElement('div');
+        card.className = 'card fade-in';
+
+        if (i < 31) {
+          const randomNumber = numbers[Math.floor(Math.random() * numbers.length)];
+          card.textContent = randomNumber;
+          card.dataset.value = randomNumber;
+        } else {
+          const randomOperator = operators[Math.floor(Math.random() * operators.length)];
+          card.textContent = randomOperator;
+          card.dataset.value = randomOperator;
         }
-        return null;
+
+        card.addEventListener('click', selectCard);
+        cards.appendChild(card);
       }
     }
 
-    class MergeGame {
-      constructor() {
-        this.items = [];
-        this.itemTypes = ['木の枝', '石', '鉄', '金', 'ダイヤモンド', '神秘の宝石'];
-        this.quests = [
-          { description: "レベル2のアイテムを3つ作ろう", goal: { level: 2, count: 3 } },
-          { description: "レベル3のアイテムを2つ作ろう", goal: { level: 3, count: 2 } },
-          { description: "レベル4のアイテムを1つ作ろう", goal: { level: 4, count: 1 } },
-          { description: "レベル5のアイテムを1つ作ろう", goal: { level: 5, count: 1 } },
-          { description: "神秘の宝石を手に入れよう", goal: { name: '神秘の宝石', count: 1 } },
-        ];
-        this.currentQuest = 0;
-        this.story = [
-          "遥か昔、この世界は平和に満ちていた。",
-          "しかし、悪魔の力によって世界は分断され、混沌に陥ってしまった。",
-          "伝説の勇者だけが、アイテムをマージする力を使って世界を救うことができる。",
-          "勇者よ、アイテムをマージし、この世界に平和を取り戻すのだ！",
-          "木の枝と石を組み合わせ、より強力なアイテムを作り出せ。",
-          "鉄と金を手に入れ、最強のアイテムを作り上げよう。",
-          "ダイヤモンドを手に入れれば、世界を救うことができるはずだ。",
-          "しかし、それだけでは終わらない。神秘の宝石を手に入れ、真の平和を取り戻そう。",
-          "神秘の宝石は、他のアイテムからのみ生み出すことができる。",
-          "勇者よ、立ち上がれ。世界の運命は君に託された！",
-          // ストーリーを追加...
-        ];
-        this.selectedItem = null;
-        this.score = 0;
-      }
+    // カードを選択する関数
+    function selectCard() {
+      if (selectedCards.length < allowedMoves) {
+        this.classList.toggle('selected');
 
-      addItem(item) {
-        this.items.push(item);
-        this.renderItems();
-      }
-
-      mergeItems(item1, item2) {
-        const mergedItem = item1.merge(item2);
-
-        if (mergedItem) {
-          const index1 = this.items.indexOf(item1);
-          const index2 = this.items.indexOf(item2);
-          this.items.splice(index1, 1);
-          this.items.splice(index2, 1);
-          this.addItem(mergedItem);
-          this.score += mergedItem.level * 10;
-          this.updateScore();
-          this.checkQuest();
-        }
-      }
-
-      checkQuest() {
-        const quest = this.quests[this.currentQuest];
-        let count;
-
-        if (quest.goal.name) {
-          count = this.items.filter(item => item.name === quest.goal.name).length;
+        if (this.classList.contains('selected')) {
+          selectedCards.push(this);
+          mergeNumbers();
+          updateCardOrder();
         } else {
-          count = this.items.filter(item => item.level === quest.goal.level).length;
-        }
-
-        if (count >= quest.goal.count) {
-          storyElement.innerHTML += `<p>クエスト「${quest.description}」をクリアしました！</p>`;
-          this.currentQuest++;
-          this.progressStory();
+          const index = selectedCards.indexOf(this);
+          selectedCards.splice(index, 1);
+          updateCardOrder();
         }
       }
+    }
 
-      progressStory() {
-        if (this.currentQuest < this.story.length) {
-          storyElement.innerHTML += `<p>${this.story[this.currentQuest]}</p>`;
+    // カードの選択順を更新する関数
+    function updateCardOrder() {
+      selectedCards.forEach((card, index) => {
+        const orderElement = card.querySelector('.card-order');
+        if (orderElement) {
+          orderElement.textContent = index + 1;
         } else {
-          storyElement.innerHTML += "<p>世界に真の平和が訪れました！あなたは伝説の勇者です！</p>";
+          const newOrderElement = document.createElement('span');
+          newOrderElement.className = 'card-order';
+          newOrderElement.textContent = index + 1;
+          card.appendChild(newOrderElement);
         }
-      }
+      });
+    }
 
-      renderItems() {
-        gameBoard.innerHTML = '';
-        this.items.forEach((item, index) => {
-          const itemElement = document.createElement('div');
-          itemElement.className = 'item';
-          itemElement.innerText = `${item.name} (Lv${item.level})`;
-          itemElement.addEventListener('click', () => {
-            if (!this.selectedItem) {
-              this.selectedItem = item;
-              itemElement.classList.add('selected');
-            } else if (this.selectedItem === item) {
-              this.selectedItem = null;
-              itemElement.classList.remove('selected');
-            } else {
-              this.mergeItems(this.selectedItem, item);
-              this.selectedItem = null;
-              gameBoard.querySelectorAll('.selected').forEach(el => el.classList.remove('selected'));
-            }
+    // 数字をマージする関数
+    function mergeNumbers() {
+      const selectedNumbers = selectedCards.filter(card => !isNaN(card.dataset.value));
+
+      if (selectedNumbers.length >= 2) {
+        const values = selectedNumbers.map(card => parseInt(card.dataset.value));
+        const uniqueValues = [...new Set(values)];
+
+        if (uniqueValues.length === 1) {
+          const mergedValue = uniqueValues[0] * 2;
+          const mergeIndex = selectedCards.indexOf(selectedNumbers[1]);
+          selectedNumbers.forEach(card => {
+            card.remove();
           });
-          gameBoard.appendChild(itemElement);
-        });
+          selectedCards = selectedCards.filter(card => !selectedNumbers.includes(card));
 
-        // ランダムにアイテムを追加（神秘の宝石を除く）
-        if (this.items.length < 20) {
-          const randomType = this.itemTypes[Math.floor(Math.random() * (this.itemTypes.length - 1))];
-          this.addItem(new Item(randomType, 1));
+          const mergedCard = document.createElement('div');
+          mergedCard.className = 'card glow';
+          mergedCard.textContent = mergedValue;
+          mergedCard.dataset.value = mergedValue;
+          mergedCard.addEventListener('click', selectCard);
+          cards.insertBefore(mergedCard, cards.children[mergeIndex]);
+
+          setTimeout(() => {
+            mergedCard.classList.remove('glow');
+          }, 1000);
+
+          cardCount++;
         }
-      }
-
-      updateScore() {
-        scoreElement.innerText = `スコア: ${this.score}`;
       }
     }
 
-    const game = new MergeGame();
-    game.addItem(new Item("木の枝", 1));
-    game.addItem(new Item("木の枝", 1));
-    game.addItem(new Item("石", 1));
-    game.addItem(new Item("石", 1));
-    game.progressStory();
+    // 3マッチを消去する関数
+    function removeMatches() {
+      const cardElements = cards.querySelectorAll('.card');
+      const cardValues = Array.from(cardElements).map(card => card.dataset.value);
+
+      for (let i = 0; i < cardValues.length; i++) {
+        if (cardValues[i] === cardValues[i + 1] && cardValues[i] === cardValues[i + 2]) {
+          const matchedCards = [cardElements[i], cardElements[i + 1], cardElements[i + 2]];
+          matchedCards.forEach(card => {
+            card.classList.add('glow');
+            setTimeout(() => {
+              card.remove();
+            }, 500);
+          });
+
+          const baseDamage = 50;
+          const damageVariance = 10;
+          const damage = baseDamage + Math.floor(Math.random() * (damageVariance * 2 + 1)) - damageVariance;
+          enemyHealth -= damage;
+          enemyHP.textContent = enemyHealth;
+          enemyHP.parentElement.classList.add('shake');
+          setTimeout(() => {
+            enemyHP.parentElement.classList.remove('shake');
+          }, 500);
+
+          cardCount += 3;
+          break;
+        }
+      }
+    }
+
+    // 計算する関数
+    function calculate() {
+      const expression = selectedCards.map(card => card.dataset.value).join('');
+
+      try {
+        const calculatedValue = eval(expression);
+
+        if (calculatedValue === target) {
+          let baseDamage = 0;
+          switch (selectedCards.length) {
+            case 3:
+              baseDamage = 10;
+              break;
+            case 4:
+              baseDamage = 20;
+              break;
+            case 5:
+              baseDamage = 30;
+              break;
+          }
+          const damageVariance = 5;
+          const damage = baseDamage + Math.floor(Math.random() * (damageVariance * 2 + 1)) - damageVariance;
+          enemyHealth -= damage;
+          enemyHP.textContent = enemyHealth;
+          enemyHP.parentElement.classList.add('shake');
+          setTimeout(() => {
+            enemyHP.parentElement.classList.remove('shake');
+          }, 500);
+          result.textContent = `敵に${damage}ダメージを与えました！`;
+        } else {
+          const baseDamage = 10;
+          const damageVariance = 3;
+          const damage = baseDamage + Math.floor(Math.random() * (damageVariance * 2 + 1)) - damageVariance;
+          playerHealth -= damage;
+          playerHP.textContent = playerHealth;
+          playerHP.parentElement.classList.add('shake');
+          setTimeout(() => {
+            playerHP.parentElement.classList.remove('shake');
+          }, 500);
+          result.textContent = `プレイヤーが${damage}ダメージを受けました！`;
+        }
+      } catch (error) {
+        result.textContent = '無効な式です！';
+      }
+
+      resetSelection();
+      replenishCards(); // カードを補充する
+      turnCount++; // ターン数を増やす
+      document.getElementById('turnCount').textContent = turnCount;
+
+      // ターン数に応じて難易度を上げる
+      if (turnCount % 5 === 0) {
+        const baseDamage = 20;
+        const damageVariance = 5;
+        const damage = baseDamage + Math.floor(Math.random() * (damageVariance * 2 + 1)) - damageVariance;
+        enemyHealth += damage;
+        enemyHP.textContent = enemyHealth;
+        enemyHP.parentElement.classList.add('shake');
+        setTimeout(() => {
+          enemyHP.parentElement.classList.remove('shake');
+        }, 500);
+      }
+    }
+
+    // カードを補充する関数
+    function replenishCards() {
+      const currentCardCount = cards.children.length;
+      const missingCardCount = 35 - currentCardCount;
+
+      const numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+      const operators = ['+', '-', '*', '/'];
+
+      let numberCardCount = missingCardCount - 4;
+      let operatorCardCount = 4;
+
+      // ターン数に応じて補充するカードの種類を変更する
+      if (turnCount >= 5) {
+        numberCardCount = missingCardCount - 6;
+        operatorCardCount = 6;
+      }
+
+      for (let i = 0; i < missingCardCount; i++) {
+        const card = document.createElement('div');
+        card.className = 'card fade-in';
+
+        if (i < numberCardCount) {
+          const randomNumber = numbers[Math.floor(Math.random() * numbers.length)];
+          card.textContent = randomNumber;
+          card.dataset.value = randomNumber;
+        } else {
+          const randomOperator = operators[Math.floor(Math.random() * operators.length)];
+          card.textContent = randomOperator;
+          card.dataset.value = randomOperator;
+        }
+
+        card.addEventListener('click', selectCard);
+        cards.appendChild(card);
+      }
+    }
+
+    // カード選択をリセットする関数
+    function resetSelection() {
+      selectedCards.forEach(card => {
+        card.classList.remove('selected');
+        const orderElement = card.querySelector('.card-order');
+        if (orderElement) {
+          orderElement.remove();
+        }
+      });
+      selectedCards = [];
+    }
+
+    // 目標の数字を生成する関数
+    function generateTargetNumber() {
+      target = Math.floor(Math.random() * 100) + 1;
+      targetNumber.textContent = target;
+    }
+
+    // 使えるカード枚数を生成する関数
+    function generateAllowedMoves() {
+      allowedMoves = Math.floor(Math.random() * 3) + 3;
+      allowedMovesElement.textContent = allowedMoves;
+    }
+
+    // ゲームを初期化する関数
+    function initializeGame() {
+      enemyHP.textContent = enemyHealth;
+      playerHP.textContent = playerHealth;
+      generateTargetNumber();
+      generateAllowedMoves();
+      generateCards();
+    }
+
+    // イベントリスナーを追加
+    calculateBtn.addEventListener('click', () => {
+      mergeNumbers();
+      removeMatches();
+      calculate();
+      generateTargetNumber();
+      generateAllowedMoves();
+    });
+
+    resetBtn.addEventListener('click', resetSelection);
+
+    // ゲームを開始
+    initializeGame();
   </script>
 </body>
 </html>
